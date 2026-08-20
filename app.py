@@ -39,7 +39,16 @@ def severity_label(score):
     return "LOW"
 
 def preprocess(img: Image.Image) -> np.ndarray:
-    img = img.convert("RGB").resize((IMG_SIZE, IMG_SIZE))
+    img = img.convert("RGB")
+    resize_to = int(IMG_SIZE * 1.15)
+    w, h = img.size
+    if w < h:
+        new_w, new_h = resize_to, round(h * resize_to / w)
+    else:
+        new_h, new_w = resize_to, round(w * resize_to / h)
+    img = img.resize((new_w, new_h), Image.BILINEAR)
+    left, top = (new_w - IMG_SIZE) // 2, (new_h - IMG_SIZE) // 2
+    img = img.crop((left, top, left + IMG_SIZE, top + IMG_SIZE))
     arr = np.asarray(img).astype(np.float32) / 255.0
     arr = (arr - MEAN) / STD
     arr = arr.transpose(2, 0, 1)[None, ...].astype(np.float32)
@@ -67,8 +76,11 @@ async def analyze(file: UploadFile = File(...)):
     except Exception:
         raise HTTPException(status_code=400, detail="invalid image")
 
-    x = preprocess(img)
-    logits = session.run(None, {input_name: x})[0][0]
+    try:
+        x = preprocess(img)
+        logits = session.run(None, {input_name: x})[0][0]
+    except Exception:
+        raise HTTPException(status_code=500, detail="inference failed")
     probs = softmax(logits)
     top_idx = int(np.argmax(probs))
     confidence = float(probs[top_idx])
