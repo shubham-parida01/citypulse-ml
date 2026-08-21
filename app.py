@@ -105,7 +105,7 @@ async def analyze(file: UploadFile = File(...)):
             "detected_features": [],
             "model_version": MODEL_VERSION,
             "note": "Below confidence threshold - manual classification required (FR-013)",
-            "debug_all": debug_top3,
+            "debug_all": debug_all,
         }
 
     base = BASE_SEVERITY.get(category, 3.0)
