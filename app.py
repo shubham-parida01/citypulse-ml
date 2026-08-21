@@ -81,10 +81,20 @@ async def analyze(file: UploadFile = File(...)):
         logits = session.run(None, {input_name: x})[0][0]
     except Exception:
         raise HTTPException(status_code=500, detail="inference failed")
+
     probs = softmax(logits)
     top_idx = int(np.argmax(probs))
     confidence = float(probs[top_idx])
     category = CLASS_NAMES[top_idx]
+
+    # TEMP DEBUG — remove before the hackathon demo. Shows the full picture
+    # behind a low-confidence call: genuinely torn between plausible classes
+    # (healthy) vs. flat/noisy across everything (model needs more work).
+    all_idx = np.argsort(probs)[::-1]  # all classes, highest confidence first
+    debug_all = [
+        {"category": CLASS_NAMES[i], "confidence": round(float(probs[i]), 3)}
+        for i in all_idx
+    ]
 
     if confidence < CONFIDENCE_THRESHOLD:
         return {
@@ -95,6 +105,7 @@ async def analyze(file: UploadFile = File(...)):
             "detected_features": [],
             "model_version": MODEL_VERSION,
             "note": "Below confidence threshold - manual classification required (FR-013)",
+            "debug_top3": debug_top3,
         }
 
     base = BASE_SEVERITY.get(category, 3.0)
@@ -107,4 +118,5 @@ async def analyze(file: UploadFile = File(...)):
         "severity_label": severity_label(severity),
         "detected_features": DETECTED_FEATURES.get(category, []),
         "model_version": MODEL_VERSION,
+        "debug_top3": debug_all,
     }
