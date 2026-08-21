@@ -92,7 +92,7 @@ async def analyze(file: UploadFile = File(...)):
     # (healthy) vs. flat/noisy across everything (model needs more work).
     all_idx = np.argsort(probs)[::-1]  # all classes, highest confidence first
     debug_all = [
-        {"category": CLASS_NAMES[i], "confidence": round(float(probs[i]), 3)}
+        {"category": CLASS_NAMES[i] if CLASS_NAMES[i] != "GARBAGE_DUMPING" else "GARBAGE", "confidence": round(float(probs[i]), 3)}
         for i in all_idx
     ]
 
@@ -105,7 +105,7 @@ async def analyze(file: UploadFile = File(...)):
             "detected_features": [],
             "model_version": MODEL_VERSION,
             "note": "Below confidence threshold - manual classification required (FR-013)",
-            "debug_top3": debug_top3,
+            "debug_all": debug_top3,
         }
 
     base = BASE_SEVERITY.get(category, 3.0)
@@ -118,5 +118,5 @@ async def analyze(file: UploadFile = File(...)):
         "severity_label": severity_label(severity),
         "detected_features": DETECTED_FEATURES.get(category, []),
         "model_version": MODEL_VERSION,
-        "debug_top3": debug_all,
+        "debug_all": debug_all,
     }
